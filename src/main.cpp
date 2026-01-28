@@ -1,48 +1,71 @@
-#include <Arduino.h>
+  #include <Arduino.h>
+  // Handle de la queue
+  xQueueHandle queue;
 
 
-
-void maTache(void *parametres)
-{
-  int v1 = 0;
-  static int v2 = 0;
-  while (1) // boucle infinie
+  void tacheEnvoi(void *parametres)
   {
-    Serial.printf("%s : v1=%d v2=%d\n", pcTaskGetName(NULL), v1, v2);
-    v1++;
-    v2++;
-    delay(500);
+    int i = 100;
+    while (1)
+    {
+      if (xQueueSend(queue, &i, portMAX_DELAY) == pdPASS)
+      {
+        Serial.printf("Envoi %d\n", i);
+        i++;
+      }
+      else
+      {
+        Serial.printf("Envoi échec\n");
+      }
+      delay(2000);
+    }
   }
-}
 
-void maTache2(void *parametres)
-{
-  int v1 = 4;
-  static int v3 = 4;
-  while (1) // boucle infinie
+
+  void tacheReception(void *parametres)
   {
-    Serial.printf("%s : v1=%d v3=%d\n", pcTaskGetName(NULL), v1, v3);
-    v1++;
-    v3++;
-    delay(500);
+    int i;
+    while (1)
+    {
+      if (xQueueReceive(queue, &i, 0) != pdTRUE)
+      {
+        Serial.printf("Réception échec\n");
+      }
+      else
+      {
+        Serial.printf("Réception %d\n", i);
+      }
+      delay(1000);
+    }
   }
-}
-
-void setup()
-{
-  Serial.begin(115200);
-  Serial.printf("Initialisation\n");
-
-  // Création de la tâche maTache
-  xTaskCreate(maTache2, "maTache2", 10000, NULL, 2, NULL);
-  xTaskCreate(maTache, "maTache", 10000, NULL, 2, NULL);
-  
-}
 
 
-void loop()
-{
-  static int i = 0;
-  Serial.printf("Boucle principale : %d\n", i++);
-  delay(1000);
-}
+  void setup()
+  {
+    Serial.begin(115200);
+    while (!Serial)
+      ;
+    Serial.printf("Départ\n");
+    // Création de la file
+    queue = xQueueCreate(10, sizeof(int));
+    xTaskCreate(
+        tacheEnvoi, /* Fonction de la tâche. */
+        "Envoi",    /* Nom de la tâche. */
+        10000,      /* Taille de la pile de la tâche */
+        NULL,       /* Paramètres de la tâche, NULL si pas de paramètre */
+        1,          /* Priorité de la tâche */
+        NULL);      /* Pointeur pour récupérer le « handle » de la tâche, optionnel */
+    xTaskCreate(
+        tacheReception, /* Fonction de la tâche. */
+        "Réception",    /* Nom de la tâche. */
+        10000,          /* Taille de la pile de la tâche */
+        NULL,           /* Paramètres de la tâche, NULL si pas de paramètre */
+        1,              /* Priorité de la tâche */
+        NULL);          /* Pointeur pour récupérer le « handle » de la tâche, optionnel */
+    vTaskDelete(NULL);
+  }
+
+
+  void loop(){
+    // Ne s'exécute pas
+  }
